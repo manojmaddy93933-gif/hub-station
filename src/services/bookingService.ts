@@ -21,12 +21,42 @@ export const bookingService = {
   async createBooking(booking: Omit<Booking, 'id'>) {
     const path = 'bookings';
     try {
+      let finalEndTime = booking.endTime;
+      
+      if (!finalEndTime && booking.startTime) {
+        let defaultDurationHours = booking.duration || 1;
+        
+        // Type-specific duration logic if duration is not explicitly set
+        if (!booking.duration) {
+          switch (booking.type) {
+            case 'theatre': defaultDurationHours = 3; break;
+            case 'badminton': defaultDurationHours = 1; break;
+            case 'carWash': defaultDurationHours = 1; break;
+            case 'game': defaultDurationHours = 1; break;
+            case 'cafe': defaultDurationHours = 1; break;
+          }
+        }
+
+        const [hoursStr, minutesStr] = booking.startTime.split(':');
+        let startTimeInMinutes = parseInt(hoursStr, 10) * 60 + parseInt(minutesStr, 10);
+        
+        // Duration is assumed to be in hours
+        let endTimeInMinutes = startTimeInMinutes + (defaultDurationHours * 60);
+        
+        const endHours = Math.floor(endTimeInMinutes / 60) % 24;
+        const endMins = Math.floor(endTimeInMinutes % 60);
+        
+        finalEndTime = `${endHours.toString().padStart(2, '0')}:${endMins.toString().padStart(2, '0')}`;
+      }
+
       const docRef = await addDoc(collection(db, path), {
         ...booking,
+        endTime: finalEndTime,
+        duration: booking.duration || 1, // ensure duration is populated
         createdAt: Date.now()
       });
       
-      const fullBooking = { id: docRef.id, ...booking, createdAt: Date.now() } as Booking;
+      const fullBooking = { id: docRef.id, ...booking, endTime: finalEndTime, duration: booking.duration || 1, createdAt: Date.now() } as Booking;
       await emailService.sendBookingConfirmation(fullBooking);
       
       return docRef.id;
@@ -46,6 +76,31 @@ export const bookingService = {
     } catch (error) {
       console.error("Error fetching booking:", error);
       return null;
+    }
+  },
+
+  async rescheduleBooking(bookingId: string, bookingType: string, date: string, startTime: string, duration: number) {
+    const path = `bookings/${bookingId}`;
+    try {
+      const [hoursStr, minutesStr] = startTime.split(':');
+      let startTimeInMinutes = parseInt(hoursStr, 10) * 60 + parseInt(minutesStr, 10);
+      let endTimeInMinutes = startTimeInMinutes + (duration * 60);
+      
+      const endHours = Math.floor(endTimeInMinutes / 60) % 24;
+      const endMins = Math.floor(endTimeInMinutes % 60);
+      
+      const finalEndTime = `${endHours.toString().padStart(2, '0')}:${endMins.toString().padStart(2, '0')}`;
+
+      await updateDoc(doc(db, 'bookings', bookingId), {
+        date,
+        startTime,
+        endTime: finalEndTime,
+        updatedAt: Date.now()
+      });
+      return true;
+    } catch (error) {
+      handleFirestoreError(error, OperationType.UPDATE, path);
+      return false;
     }
   },
 

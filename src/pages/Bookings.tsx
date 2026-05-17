@@ -25,9 +25,12 @@ import {
   Coffee,
   User as UserIcon,
   Trash2,
-  X
+  X,
+  Edit2
 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
+import { doc, updateDoc } from 'firebase/firestore';
+import { db } from '../services/firebase';
 import { RATES, CAR_WASH_HOURS, BADMINTON_HOURS, THEATRE_HOURS, AURA_CAFE_HOURS } from '../constants';
 import PaymentQR from '../components/PaymentQR';
 
@@ -41,7 +44,22 @@ const Bookings = () => {
   const [policyAccepted, setPolicyAccepted] = useState(false);
   const [isStudent, setIsStudent] = useState(false);
   const [isClearing, setIsClearing] = useState(false);
-  const [deleteDialogId, setDeleteDialogId] = useState<string | null>(null);
+  const [reschedulingBooking, setReschedulingBooking] = useState<Booking | null>(null);
+  const [rescheduleDate, setRescheduleDate] = useState('');
+  const [rescheduleTime, setRescheduleTime] = useState('');
+  const [isRescheduling, setIsRescheduling] = useState(false);
+
+  const [isEditingProfile, setIsEditingProfile] = useState(false);
+  const [editDisplayName, setEditDisplayName] = useState(profile?.displayName || user?.displayName || '');
+  const [editMobileNumber, setEditMobileNumber] = useState(profile?.mobileNumber || '');
+  const [isUpdatingProfile, setIsUpdatingProfile] = useState(false);
+
+  useEffect(() => {
+    if (profile) {
+      setEditDisplayName(profile.displayName || user?.displayName || '');
+      setEditMobileNumber(profile.mobileNumber || '');
+    }
+  }, [profile]);
 
   // Form states
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
@@ -190,6 +208,47 @@ const Bookings = () => {
     }
   };
 
+  const handleUpdateProfile = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user) return;
+    setIsUpdatingProfile(true);
+    try {
+      await updateDoc(doc(db, 'users', user.uid), {
+        displayName: editDisplayName,
+        mobileNumber: editMobileNumber,
+      });
+      setIsEditingProfile(false);
+      alert('Profile updated successfully! Note: You may need to refresh to see all changes.');
+    } catch (error) {
+      console.error('Error updating profile:', error);
+      alert('Failed to update profile.');
+    } finally {
+      setIsUpdatingProfile(false);
+    }
+  };
+
+  const handleRescheduleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!reschedulingBooking) return;
+    setIsRescheduling(true);
+    try {
+      await bookingService.rescheduleBooking(
+        reschedulingBooking.id!,
+        reschedulingBooking.type,
+        rescheduleDate,
+        rescheduleTime,
+        reschedulingBooking.duration || 1
+      );
+      setReschedulingBooking(null);
+      alert('Booking rescheduled successfully!');
+    } catch (error) {
+      console.error(error);
+      alert('Failed to reschedule. Please try again.');
+    } finally {
+      setIsRescheduling(false);
+    }
+  };
+
   const confirmDelete = async () => {
     if (!deleteDialogId) return;
     try {
@@ -261,6 +320,10 @@ const Bookings = () => {
     );
   };
 
+  const upcomingCount = myBookings.filter(b => ['pending', 'ongoing'].includes(b.status)).length;
+  const pastCount = myBookings.filter(b => ['completed', 'cancelled'].includes(b.status)).length;
+  const totalSpent = myBookings.filter(b => b.status !== 'cancelled').reduce((sum, b) => sum + (b.price || 0), 0);
+
   return (
     <div className="max-w-7xl mx-auto px-4 py-12 grid grid-cols-1 lg:grid-cols-12 gap-8">
       {/* User Profile Header */}
@@ -284,12 +347,26 @@ const Bookings = () => {
           </div>
           
           <div className="flex-1 text-center md:text-left">
-            <h1 className="text-3xl font-black text-slate-100 uppercase tracking-tighter italic">
-              {profile?.displayName || user?.displayName || 'Hub Member'}
-            </h1>
+            <div className="flex justify-between items-center">
+              <h1 className="text-3xl font-black text-slate-100 uppercase tracking-tighter italic">
+                {profile?.displayName || user?.displayName || 'Hub Member'}
+              </h1>
+              <button 
+                onClick={() => setIsEditingProfile(true)}
+                className="p-2 border border-zinc-800 rounded-full text-zinc-400 hover:text-slate-100 transition-colors"
+                title="Edit Profile"
+              >
+                <Edit2 size={16} />
+              </button>
+            </div>
             <p className="text-zinc-500 font-bold uppercase text-xs tracking-widest mt-1">
               {user?.email}
             </p>
+            {profile?.mobileNumber && (
+              <p className="text-zinc-500 font-bold uppercase text-xs tracking-widest mt-1">
+                {profile.mobileNumber}
+              </p>
+            )}
             <div className="flex flex-wrap justify-center md:justify-start gap-4 mt-4">
               <div className="px-4 py-2 bg-zinc-950 rounded-xl border border-zinc-800">
                 <p className="text-[8px] font-black text-zinc-600 uppercase tracking-widest mb-1">Total Reservations</p>
@@ -660,7 +737,7 @@ const Bookings = () => {
 
       {/* Bookings List */}
       <div className="lg:col-span-7">
-        <div className="flex items-center justify-between mb-8">
+        <div className="flex items-center justify-between mb-4">
           <h2 className="text-2xl font-bold uppercase tracking-tighter text-slate-100">
             {historyTab === 'active' ? 'Active Sessions' : 'Booking History'}
           </h2>
@@ -699,6 +776,21 @@ const Bookings = () => {
               </button>
             ))}
           </div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-3 gap-4 mb-8">
+        <div className="bg-zinc-900 border border-zinc-800 rounded-3xl p-4 shadow-sm flex flex-col items-center justify-center">
+          <span className="text-[10px] font-black text-zinc-500 uppercase tracking-widest mb-1">Upcoming</span>
+          <span className="text-2xl font-black text-slate-100 italic">{upcomingCount}</span>
+        </div>
+        <div className="bg-zinc-900 border border-zinc-800 rounded-3xl p-4 shadow-sm flex flex-col items-center justify-center">
+          <span className="text-[10px] font-black text-zinc-500 uppercase tracking-widest mb-1">Past</span>
+          <span className="text-2xl font-black text-slate-100 italic">{pastCount}</span>
+        </div>
+        <div className="bg-zinc-900 border border-zinc-800 rounded-3xl p-4 shadow-sm flex flex-col items-center justify-center">
+          <span className="text-[10px] font-black text-zinc-500 uppercase tracking-widest mb-1">Total Spent</span>
+          <span className="text-2xl font-black text-emerald-400 italic">₹{totalSpent}</span>
         </div>
       </div>
         
@@ -778,7 +870,20 @@ const Bookings = () => {
 
                 {/* QR Code Actions */}
                 {!['completed', 'cancelled'].includes(booking.status) && (
-                  <div className="mt-4 grid grid-cols-2 gap-3">
+                  <div className="mt-4 grid grid-cols-3 gap-3">
+                    <button 
+                      onClick={() => {
+                        setReschedulingBooking(booking);
+                        setRescheduleDate(booking.date);
+                        setRescheduleTime(booking.startTime);
+                      }}
+                      className="flex-1 py-4 bg-zinc-950 border border-zinc-800 rounded-2xl flex items-center justify-center gap-3 hover:border-blue-500/40 transition-all group/reschedule"
+                    >
+                      <Clock size={18} className="text-zinc-600 group-hover/reschedule:text-blue-500 transition-colors" />
+                      <span className="text-[10px] font-black text-zinc-500 uppercase tracking-widest group-hover/reschedule:text-slate-100">
+                        Reschedule
+                      </span>
+                    </button>
                     <button 
                       onClick={() => {
                         setShowQR(showQR === booking.id ? null : booking.id!);
@@ -897,6 +1002,185 @@ const Bookings = () => {
           </motion.div>
         )}
       </div>
+
+      {/* Edit Profile Dialog */}
+      <AnimatePresence>
+        {isEditingProfile && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setIsEditingProfile(false)}
+              className="absolute inset-0 bg-black/80 backdrop-blur-sm"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-zinc-900 border border-zinc-800 rounded-3xl p-8 max-w-sm w-full relative z-10 shadow-2xl"
+            >
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-xl font-bold text-slate-100 uppercase tracking-tight">Edit Profile</h3>
+                <button onClick={() => setIsEditingProfile(false)} className="p-2 bg-zinc-800 rounded-full text-zinc-400 hover:text-slate-100 text-xs">
+                  <X size={16} />
+                </button>
+              </div>
+
+              <form onSubmit={handleUpdateProfile} className="space-y-6">
+                <div>
+                  <label className="block text-[10px] font-black text-zinc-500 uppercase tracking-widest mb-2 px-1">Display Name</label>
+                  <div className="relative">
+                    <UserIcon className="absolute left-4 top-3.5 text-zinc-600" size={18} />
+                    <input 
+                      type="text" 
+                      required
+                      value={editDisplayName}
+                      onChange={(e) => setEditDisplayName(e.target.value)}
+                      className="input-field pl-12"
+                      placeholder="Your Name"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-black text-zinc-500 uppercase tracking-widest mb-2 px-1">Mobile Number</label>
+                  <div className="relative">
+                    <Phone className="absolute left-4 top-3.5 text-zinc-600" size={18} />
+                    <input 
+                      type="tel" 
+                      required
+                      value={editMobileNumber}
+                      onChange={(e) => setEditMobileNumber(e.target.value)}
+                      className="input-field pl-12"
+                      placeholder="+91..."
+                    />
+                  </div>
+                </div>
+
+                <div className="flex gap-4 pt-4 border-t border-zinc-800">
+                  <button
+                    type="button"
+                    onClick={() => setIsEditingProfile(false)}
+                    className="flex-1 py-3 bg-zinc-800 hover:bg-zinc-700 text-slate-200 rounded-xl font-bold uppercase text-[10px] tracking-widest transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isUpdatingProfile}
+                    className="flex-1 py-3 bg-accent hover:bg-accent/80 text-zinc-950 rounded-xl font-bold uppercase text-[10px] tracking-widest transition-colors disabled:opacity-50"
+                  >
+                    {isUpdatingProfile ? 'Saving...' : 'Save Profile'}
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Reschedule Dialog */}
+      <AnimatePresence>
+        {reschedulingBooking && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setReschedulingBooking(null)}
+              className="absolute inset-0 bg-black/80 backdrop-blur-sm"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-zinc-900 border border-zinc-800 rounded-3xl p-8 max-w-sm w-full relative z-10 shadow-2xl"
+            >
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-xl font-bold text-slate-100 uppercase tracking-tight">Reschedule Booking</h3>
+                <button onClick={() => setReschedulingBooking(null)} className="p-2 bg-zinc-800 rounded-full text-zinc-400 hover:text-slate-100 text-xs">
+                  <X size={16} />
+                </button>
+              </div>
+
+              <form onSubmit={handleRescheduleSubmit} className="space-y-6">
+                <div>
+                  <label className="block text-[10px] font-black text-zinc-500 uppercase tracking-widest mb-2 px-1">New Date</label>
+                  <div className="relative">
+                    <Calendar className="absolute left-4 top-3.5 text-zinc-600" size={18} />
+                    <input 
+                      type="date" 
+                      required
+                      value={rescheduleDate}
+                      min={new Date().toISOString().split('T')[0]}
+                      onChange={(e) => setRescheduleDate(e.target.value)}
+                      className="input-field pl-12"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-black text-zinc-500 uppercase tracking-widest mb-2 px-1">
+                    New Time Slot
+                  </label>
+                  <div className="relative">
+                    <Clock className="absolute left-4 top-3.5 text-zinc-600 z-10" size={18} />
+                    {reschedulingBooking.type === 'theatre' || reschedulingBooking.type === 'badminton' || reschedulingBooking.type === 'cafe' ? (
+                      <select 
+                        required
+                        value={rescheduleTime}
+                        onChange={(e) => setRescheduleTime(e.target.value)}
+                        className="input-field pl-12"
+                      >
+                        <option value="">Select slot</option>
+                        {(reschedulingBooking.type === 'theatre' ? THEATRE_HOURS : reschedulingBooking.type === 'cafe' ? [AURA_CAFE_HOURS] : BADMINTON_HOURS).map((range, idx) => (
+                          <optgroup key={idx} label={reschedulingBooking.type === 'cafe' ? 'Available Hours' : `Session ${idx + 1}`}>
+                            {generateTimeSlots(range.open, range.close).map(slot => (
+                              <option key={slot} value={slot}>
+                                {parseInt(slot.split(':')[0]) > 12 
+                                  ? `${parseInt(slot.split(':')[0]) - 12}:00 PM` 
+                                  : parseInt(slot.split(':')[0]) === 12 
+                                    ? '12:00 PM' 
+                                    : `${slot} AM`}
+                              </option>
+                            ))}
+                           </optgroup>
+                        ))}
+                      </select>
+                    ) : (
+                      <input 
+                        type="time" 
+                        required
+                        value={rescheduleTime}
+                        onChange={(e) => setRescheduleTime(e.target.value)}
+                        className="input-field pl-12"
+                      />
+                    )}
+                  </div>
+                </div>
+
+                <div className="flex gap-4 pt-4 border-t border-zinc-800">
+                  <button
+                    type="button"
+                    onClick={() => setReschedulingBooking(null)}
+                    className="flex-1 py-3 bg-zinc-800 hover:bg-zinc-700 text-slate-200 rounded-xl font-bold uppercase text-[10px] tracking-widest transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isRescheduling}
+                    className="flex-1 py-3 bg-blue-500 hover:bg-blue-600 text-white rounded-xl font-bold uppercase text-[10px] tracking-widest transition-colors disabled:opacity-50"
+                  >
+                    {isRescheduling ? 'Saving...' : 'Save Changes'}
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
       {/* Delete Confirmation Dialog */}
       <AnimatePresence>

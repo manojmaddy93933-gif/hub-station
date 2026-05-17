@@ -71,6 +71,14 @@ const playNotificationSound = () => {
   }
 };
 
+const SERVICE_CAPACITIES: Record<string, number> = {
+  'game': 20,
+  'carWash': 5,
+  'badminton': 4,
+  'theatre': 2,
+  'cafe': 30
+};
+
 const getServiceDisplayName = (type: string) => {
   const types: Record<string, string> = {
     'game': 'Game',
@@ -103,9 +111,21 @@ const AdminDashboard = () => {
   const [unreadCount, setUnreadCount] = useState(0);
   const [dateFilter, setDateFilter] = useState<'all' | 'today' | 'last7' | 'custom'>('all');
   const [customRange, setCustomRange] = useState({ start: '', end: '' });
-  const [activeView, setActiveView] = useState<'bookings' | 'payments'>('bookings');
+  const [activeView, setActiveView] = useState<'bookings' | 'payments' | 'reports'>('bookings');
+  const [reportPeriod, setReportPeriod] = useState<'today' | 'week' | 'all'>('all');
   const [isClearHistoryModalOpen, setIsClearHistoryModalOpen] = useState(false);
+  const [capacities, setCapacities] = useState<Record<string, number>>(() => {
+    const saved = localStorage.getItem('service_capacities');
+    return saved ? JSON.parse(saved) : SERVICE_CAPACITIES;
+  });
+  const [isEditingCapacities, setIsEditingCapacities] = useState(false);
+  const [tempCapacities, setTempCapacities] = useState<Record<string, number>>({});
   const isFirstLoad = React.useRef(true);
+  const previousBookingsRef = React.useRef<Record<string, Booking>>({});
+
+  useEffect(() => {
+    localStorage.setItem('service_capacities', JSON.stringify(capacities));
+  }, [capacities]);
 
   useEffect(() => {
     const unsubscribe = bookingService.subscribeToAllBookings((data, changes) => {
@@ -115,12 +135,16 @@ const AdminDashboard = () => {
 
       if (isFirstLoad.current) {
         isFirstLoad.current = false;
+        data.forEach(b => {
+          if (b.id) previousBookingsRef.current[b.id] = b;
+        });
         return;
       }
 
       if (changes) {
         changes.forEach((change: any) => {
           const booking = { id: change.doc.id, ...change.doc.data() } as Booking;
+          const oldBooking = booking.id ? previousBookingsRef.current[booking.id] : null;
           
           if (change.type === 'added') {
             addNotification({
@@ -131,14 +155,22 @@ const AdminDashboard = () => {
               time: Date.now()
             });
           } else if (change.type === 'modified') {
+            const oldStatus = oldBooking ? oldBooking.status : 'unknown';
             addNotification({
               id: `update-${booking.id}-${Date.now()}`,
               title: 'Status Updated',
-              message: `${booking.userName}'s ${booking.type} is now ${booking.status}`,
+              message: `${booking.userName}'s ${booking.type} changed from ${oldStatus} to ${booking.status}`,
               type: 'update',
               time: Date.now()
             });
           }
+          if (booking.id) {
+            previousBookingsRef.current[booking.id] = booking;
+          }
+        });
+      } else {
+        data.forEach(b => {
+          if (b.id) previousBookingsRef.current[b.id] = b;
         });
       }
     });
@@ -323,6 +355,47 @@ const AdminDashboard = () => {
     setUpdateTrackingId(null);
     setTrackingNote('');
   };
+
+  const getReportData = () => {
+    let filtered = bookings;
+    const now = new Date();
+    
+    if (reportPeriod === 'today') {
+      const todayString = now.toISOString().split('T')[0];
+      filtered = bookings.filter(b => b.date === todayString);
+    } else if (reportPeriod === 'week') {
+      const lastWeek = now.getTime() - 7 * 24 * 60 * 60 * 1000;
+      filtered = bookings.filter(b => b.createdAt >= lastWeek);
+    }
+
+    const totalRevenue = filtered.filter(b => b.paymentStatus === 'paid').reduce((sum, b) => sum + (b.price || 0), 0);
+    const totalBookings = filtered.length;
+    const completedBookings = filtered.filter(b => b.status === 'completed').length;
+    const cancelledBookings = filtered.filter(b => b.status === 'cancelled').length;
+
+    return { totalRevenue, totalBookings, completedBookings, cancelledBookings };
+  };
+
+  const reportData = getReportData();
+
+  const getCapacityData = () => {
+    const today = new Date();
+    const tzoffset = today.getTimezoneOffset() * 60000; 
+    const localToday = (new Date(today.getTime() - tzoffset)).toISOString().split('T')[0];
+    
+    const activeBookings = bookings.filter(b => 
+      (b.status === 'ongoing' || b.status === 'pending') && 
+      b.date === localToday
+    );
+    
+    return Object.entries(capacities).map(([type, capacity]) => {
+      const activeCount = activeBookings.filter(b => b.type === type).length;
+      const utilization = Math.min(Math.round((activeCount / capacity) * 100), 100);
+      return { type, capacity, activeCount, utilization };
+    });
+  };
+
+  const capacityData = getCapacityData();
 
   const filteredBookings = bookings.filter(b => {
     const matchesFilter = filter === 'all' || b.status === filter;
@@ -561,6 +634,12 @@ const AdminDashboard = () => {
           className={`pb-4 px-6 text-sm font-black uppercase tracking-widest transition-all ${activeView === 'payments' ? 'text-accent border-b-2 border-accent' : 'text-zinc-600 hover:text-zinc-400'}`}
         >
           Payment History
+        </button>
+        <button 
+          onClick={() => setActiveView('reports')}
+          className={`pb-4 px-6 text-sm font-black uppercase tracking-widest transition-all ${activeView === 'reports' ? 'text-accent border-b-2 border-accent' : 'text-zinc-600 hover:text-zinc-400'}`}
+        >
+          Reports
         </button>
       </div>
 
@@ -1022,7 +1101,7 @@ const AdminDashboard = () => {
         ))}
       </div>
       </>
-      ) : (
+      ) : activeView === 'payments' ? (
         <div className="bg-zinc-900 border border-zinc-800 rounded-[2.5rem] p-8 shadow-2xl">
           <h3 className="text-2xl font-black text-slate-100 uppercase tracking-tighter italic mb-6">Payment History</h3>
           <div className="overflow-x-auto">
@@ -1061,7 +1140,159 @@ const AdminDashboard = () => {
             </table>
           </div>
         </div>
+      ) : (
+        <div className="bg-zinc-900 border border-zinc-800 rounded-[2.5rem] p-8 shadow-2xl">
+          <div className="flex flex-col md:flex-row items-start md:items-center justify-between mb-8 gap-4">
+            <h3 className="text-2xl font-black text-slate-100 uppercase tracking-tighter italic">Analytics & Reports</h3>
+            <div className="flex bg-zinc-950 p-1.5 rounded-2xl border border-zinc-800">
+              {(['today', 'week', 'all'] as const).map(period => (
+                <button
+                  key={period}
+                  onClick={() => setReportPeriod(period)}
+                  className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${
+                    reportPeriod === period ? 'bg-accent text-zinc-950' : 'text-zinc-500 hover:text-slate-100'
+                  }`}
+                >
+                  {period === 'today' ? 'Today' : period === 'week' ? 'Last 7 Days' : 'All Time'}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className="bg-zinc-950 border border-zinc-800 rounded-3xl p-6 relative overflow-hidden group">
+              <div className="absolute top-0 right-0 w-32 h-32 bg-accent/5 rounded-full blur-3xl -mr-16 -mt-16 group-hover:bg-accent/10 transition-colors" />
+              <p className="text-[10px] font-black text-zinc-500 uppercase tracking-widest mb-2 relative z-10">Total Bookings</p>
+              <p className="text-4xl font-black text-slate-100 relative z-10">{reportData.totalBookings}</p>
+            </div>
+            
+            <div className="bg-zinc-950 border border-zinc-800 rounded-3xl p-6 relative overflow-hidden group">
+              <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/5 rounded-full blur-3xl -mr-16 -mt-16 group-hover:bg-emerald-500/10 transition-colors" />
+              <p className="text-[10px] font-black text-zinc-500 uppercase tracking-widest mb-2 relative z-10">Total Revenue</p>
+              <p className="text-4xl font-black text-emerald-400 relative z-10">₹{reportData.totalRevenue}</p>
+            </div>
+
+            <div className="bg-zinc-950 border border-zinc-800 rounded-3xl p-6 relative overflow-hidden group">
+              <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/5 rounded-full blur-3xl -mr-16 -mt-16 group-hover:bg-blue-500/10 transition-colors" />
+              <p className="text-[10px] font-black text-zinc-500 uppercase tracking-widest mb-2 relative z-10">Completed</p>
+              <p className="text-4xl font-black text-blue-400 relative z-10">{reportData.completedBookings}</p>
+            </div>
+
+            <div className="bg-zinc-950 border border-zinc-800 rounded-3xl p-6 relative overflow-hidden group">
+              <div className="absolute top-0 right-0 w-32 h-32 bg-red-500/5 rounded-full blur-3xl -mr-16 -mt-16 group-hover:bg-red-500/10 transition-colors" />
+              <p className="text-[10px] font-black text-zinc-500 uppercase tracking-widest mb-2 relative z-10">Cancelled</p>
+              <p className="text-4xl font-black text-red-500 relative z-10">{reportData.cancelledBookings}</p>
+            </div>
+          </div>
+
+          <div className="flex items-center justify-between mt-12 mb-6">
+            <h3 className="text-xl font-black text-slate-100 uppercase tracking-tighter italic">Live Capacity & Utilization</h3>
+            <button 
+              onClick={() => {
+                setTempCapacities(capacities);
+                setIsEditingCapacities(true);
+              }}
+              className="text-xs font-bold text-accent uppercase tracking-widest hover:text-accent/80 transition-colors"
+            >
+              Edit Capacities
+            </button>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6">
+            {capacityData.map((data) => (
+              <div key={data.type} className="bg-zinc-950 border border-zinc-800 rounded-3xl p-6 relative overflow-hidden group">
+                <div className="flex items-center justify-between mb-4 relative z-10">
+                  <span className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">{getServiceDisplayName(data.type)}</span>
+                  <span className={`text-xs font-black uppercase tracking-widest ${data.utilization > 80 ? 'text-red-500' : data.utilization > 50 ? 'text-amber-500' : 'text-emerald-500'}`}>
+                    {data.utilization}%
+                  </span>
+                </div>
+                
+                <div className="h-2 w-full bg-zinc-900 rounded-full mb-4 relative z-10 overflow-hidden">
+                  <motion.div 
+                    initial={{ width: 0 }}
+                    animate={{ width: `${data.utilization}%` }}
+                    transition={{ duration: 1, ease: 'easeOut' }}
+                    className={`h-full rounded-full ${data.utilization > 80 ? 'bg-red-500' : data.utilization > 50 ? 'bg-amber-500' : 'bg-emerald-500'}`}
+                  />
+                </div>
+                
+                <div className="flex justify-between items-center relative z-10 mt-auto">
+                  <span className="text-zinc-400 text-xs font-bold uppercase tracking-widest text-[10px]">Active</span>
+                  <span className="text-slate-100 font-black">{data.activeCount} <span className="text-zinc-600">/ {data.capacity}</span></span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
       )}
+
+      {/* Edit Capacities Dialog */}
+      <AnimatePresence>
+        {isEditingCapacities && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setIsEditingCapacities(false)}
+              className="absolute inset-0 bg-black/80 backdrop-blur-sm"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-zinc-900 border border-zinc-800 rounded-3xl p-8 max-w-sm w-full relative z-10 shadow-2xl"
+            >
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-xl font-bold text-slate-100 uppercase tracking-tight">Manage Capacities</h3>
+                <button onClick={() => setIsEditingCapacities(false)} className="p-2 bg-zinc-800 rounded-full text-zinc-400 hover:text-slate-100 text-xs">
+                  <X size={16} />
+                </button>
+              </div>
+
+              <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-2">
+                {Object.entries(tempCapacities).map(([type, capacity]) => (
+                  <div key={type} className="flex items-center justify-between">
+                    <label className="text-xs font-black text-zinc-400 uppercase tracking-widest">{getServiceDisplayName(type)}</label>
+                    <input 
+                      type="number" 
+                      min="1"
+                      className="bg-zinc-950 border border-zinc-800 text-slate-100 px-3 py-2 rounded-xl w-24 text-center font-bold font-mono text-sm"
+                      value={capacity.toString()}
+                      onChange={(e) => {
+                        const val = parseInt(e.target.value);
+                        if (!isNaN(val) && val > 0) {
+                          setTempCapacities(prev => ({ ...prev, [type]: val }));
+                        }
+                      }}
+                    />
+                  </div>
+                ))}
+              </div>
+
+              <div className="flex gap-4 pt-6 mt-6 border-t border-zinc-800">
+                <button
+                  type="button"
+                  onClick={() => setIsEditingCapacities(false)}
+                  className="flex-1 py-3 bg-zinc-800 hover:bg-zinc-700 text-slate-200 rounded-xl font-bold uppercase text-[10px] tracking-widest transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCapacities(tempCapacities);
+                    setIsEditingCapacities(false);
+                  }}
+                  className="flex-1 py-3 bg-accent hover:bg-accent/80 text-zinc-950 rounded-xl font-bold uppercase text-[10px] tracking-widest transition-colors"
+                >
+                  Save Changes
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };
