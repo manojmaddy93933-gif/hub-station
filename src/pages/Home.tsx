@@ -7,8 +7,6 @@ import gamesImg from '../assets/images/games_vibe_1778742630317.png';
 import badmintonImg from '../assets/images/badminton_vibe_1778742647583.png';
 import { Monitor } from 'lucide-react';
 
-import { MapSection } from '../components/MapSection';
-
 const Home = () => {
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -52,7 +50,7 @@ const Home = () => {
     {
       id: 'cafe',
       title: 'AURA Cafe',
-      description: 'Gourmet menu, artisan coffee, and premium social vibes.',
+      description: 'Gourmet menu, artisan coffee, and premium social vibes with free table booking.',
       icon: <Coffee size={24} />,
       image: 'https://images.unsplash.com/photo-1554118811-1e0d58224f24?q=80&w=2047&auto=format&fit=crop',
       link: '/bookings',
@@ -74,7 +72,7 @@ const Home = () => {
     {
       id: 'games',
       title: 'Game Zone',
-      description: 'Carrom, Chess, and Ludo. Book your table now.',
+      description: 'Carrom, Chess, Ludo, and Free tables. Book your table now.',
       icon: <Gamepad2 size={24} />,
       image: gamesImg,
       link: '/bookings',
@@ -308,8 +306,6 @@ const Home = () => {
           </div>
         </motion.div>
       </section>
-      {/* Location Map Section */}
-      <MapSection />
     </div>
   );
 };

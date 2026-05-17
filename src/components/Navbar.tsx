@@ -19,6 +19,7 @@ const Navbar = () => {
     >
       <div className="max-w-7xl mx-auto px-4 h-20 flex items-center justify-between">
         <Link to="/" className="flex items-center gap-3 group">
+          <img src="/src/assets/images/teal_shark_logo_1779009804466.png" alt="Hub Station Logo" className="w-10 h-10 object-contain rounded-xl bg-zinc-900 border border-zinc-800 p-1 group-hover:border-accent transition-colors" />
           <div className="flex flex-col">
             <h1 className="font-black text-lg leading-none tracking-tight text-slate-100 uppercase italic">Hub Station</h1>
             <p className="text-[8px] uppercase tracking-[0.3em] text-zinc-500 font-black mt-1">Premium Experience</p>

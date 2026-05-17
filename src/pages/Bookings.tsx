@@ -29,7 +29,6 @@ import {
 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { RATES, CAR_WASH_HOURS, BADMINTON_HOURS, THEATRE_HOURS, AURA_CAFE_HOURS } from '../constants';
-import { LiveTrackingMap } from '../components/LiveTrackingMap';
 import PaymentQR from '../components/PaymentQR';
 
 const Bookings = () => {
@@ -42,6 +41,7 @@ const Bookings = () => {
   const [policyAccepted, setPolicyAccepted] = useState(false);
   const [isStudent, setIsStudent] = useState(false);
   const [isClearing, setIsClearing] = useState(false);
+  const [deleteDialogId, setDeleteDialogId] = useState<string | null>(null);
 
   // Form states
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
@@ -120,7 +120,7 @@ const Bookings = () => {
         resourceName = `AURA Cafe Table (${resourceId})`;
       }
 
-      if (isStudent) {
+      if (isStudent && activeTab === 'theatre') {
         price = Math.floor(price * 0.9);
       }
 
@@ -190,10 +190,11 @@ const Bookings = () => {
     }
   };
 
-  const handleDeleteBooking = async (id: string) => {
-    if (!window.confirm('Delete this record?')) return;
+  const confirmDelete = async () => {
+    if (!deleteDialogId) return;
     try {
-      await bookingService.deleteBooking(id);
+      await bookingService.deleteBooking(deleteDialogId);
+      setDeleteDialogId(null);
     } catch (error) {
       console.error(error);
     }
@@ -256,8 +257,6 @@ const Bookings = () => {
           <MapPin size={10} />
           <span>Hub Location: {booking.bay || 'Station Area'}</span>
         </div>
-
-        <LiveTrackingMap status={booking.status} type={booking.type} />
       </motion.div>
     );
   };
@@ -350,7 +349,9 @@ const Bookings = () => {
               >
                 <option value="">Select an option</option>
                 {activeTab === 'game' && Object.values(RATES.GAMES).map(g => (
-                  <option key={g.name} value={g.name}>{g.name} (₹{g.rate}/hr)</option>
+                  <option key={g.name} value={g.name}>
+                    {g.name} (Only {g.tables} available) {g.rate > 0 ? `- ₹${g.rate} for 1 hour (Pre-booking)` : ''}
+                  </option>
                 ))}
                 {activeTab === 'carWash' && RATES.CAR_WASH.map(w => (
                   <option key={w.type} value={w.type}>{w.type} (₹{w.price})</option>
@@ -370,9 +371,9 @@ const Bookings = () => {
                 )}
                 {activeTab === 'cafe' && (
                   <>
-                    <option value="Regular Table">Regular Table (₹{RATES.CAFE.tableBooking})</option>
-                    <option value="Booth Seating">Booth Seating (₹{RATES.CAFE.tableBooking})</option>
-                    <option value="Outdoor Terrace">Outdoor Terrace (₹{RATES.CAFE.tableBooking})</option>
+                    <option value="Regular Table">Regular Table {RATES.CAFE.tableBooking > 0 ? `(₹${RATES.CAFE.tableBooking})` : '(Free)'}</option>
+                    <option value="Booth Seating">Booth Seating {RATES.CAFE.tableBooking > 0 ? `(₹${RATES.CAFE.tableBooking})` : '(Free)'}</option>
+                    <option value="Outdoor Terrace">Outdoor Terrace {RATES.CAFE.tableBooking > 0 ? `(₹${RATES.CAFE.tableBooking})` : '(Free)'}</option>
                   </>
                 )}
               </select>
@@ -579,6 +580,7 @@ const Bookings = () => {
             </div>
 
             {/* Student Discount Toggle */}
+            {activeTab === 'theatre' && (
             <div className="p-4 bg-zinc-950 border border-zinc-800 rounded-2xl">
               <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center gap-2 text-accent">
@@ -609,6 +611,7 @@ const Bookings = () => {
                 </span>
               </label>
             </div>
+            )}
 
             {/* Cancellation Policy */}
             <div className="p-4 bg-zinc-950 border border-zinc-800 rounded-2xl">
@@ -758,10 +761,12 @@ const Bookings = () => {
                       {booking.status}
                     </span>
                     <div className="flex items-center gap-3">
-                      <span className="font-black text-xl italic text-slate-100">₹{booking.price}</span>
+                      <span className="font-black text-xl italic text-slate-100">
+                        {booking.price === 0 ? 'Free' : `₹${booking.price}`}
+                      </span>
                       {historyTab === 'history' && (
                         <button 
-                          onClick={() => handleDeleteBooking(booking.id!)}
+                          onClick={() => setDeleteDialogId(booking.id!)}
                           className="p-2 text-zinc-600 hover:text-red-500 hover:bg-red-500/10 rounded-full transition-all"
                         >
                           <Trash2 size={16} />
@@ -892,6 +897,49 @@ const Bookings = () => {
           </motion.div>
         )}
       </div>
+
+      {/* Delete Confirmation Dialog */}
+      <AnimatePresence>
+        {deleteDialogId && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setDeleteDialogId(null)}
+              className="absolute inset-0 bg-black/80 backdrop-blur-sm"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-zinc-900 border border-zinc-800 rounded-3xl p-8 max-w-sm w-full relative z-10 shadow-2xl"
+            >
+              <div className="w-16 h-16 bg-red-500/10 text-red-500 rounded-full flex items-center justify-center mx-auto mb-6">
+                <Trash2 size={32} />
+              </div>
+              <h3 className="text-xl font-bold text-slate-100 text-center mb-2 uppercase tracking-tight">Delete Booking</h3>
+              <p className="text-zinc-400 text-center text-xs mb-8">
+                Are you sure you want to permanently delete this booking from your history? This action cannot be undone.
+              </p>
+              <div className="flex gap-4">
+                <button
+                  onClick={() => setDeleteDialogId(null)}
+                  className="flex-1 py-3 bg-zinc-800 hover:bg-zinc-700 text-slate-200 rounded-xl font-bold uppercase text-[10px] tracking-widest transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={confirmDelete}
+                  className="flex-1 py-3 bg-red-500 hover:bg-red-600 text-white rounded-xl font-bold uppercase text-[10px] tracking-widest transition-colors"
+                >
+                  Delete
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };

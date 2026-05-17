@@ -10,7 +10,7 @@ export const BADMINTON_HOURS = [
 
 export const RATES = {
   GAMES: {
-    CARROM: { name: 'Carrom Table', tables: 2, rate: 80 },
+    CARROM: { name: 'Carrom Board Table', tables: 2, rate: 80 },
     CHESS: { name: 'Chess Table', tables: 1, rate: 50 },
     LUDO: { name: 'Ludo Table', tables: 3, rate: 60 },
     FREE: { name: 'Free Table', tables: 3, rate: 0 }
@@ -30,7 +30,7 @@ export const RATES = {
     halfDay: 1800
   },
   CAFE: {
-    tableBooking: 200
+    tableBooking: 0
   }
 };
 

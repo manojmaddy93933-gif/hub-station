@@ -31,7 +31,8 @@ import {
   Car,
   Trophy,
   Monitor,
-  Coffee
+  Coffee,
+  X
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import PaymentQR from '../components/PaymentQR';
@@ -103,6 +104,7 @@ const AdminDashboard = () => {
   const [dateFilter, setDateFilter] = useState<'all' | 'today' | 'last7' | 'custom'>('all');
   const [customRange, setCustomRange] = useState({ start: '', end: '' });
   const [activeView, setActiveView] = useState<'bookings' | 'payments'>('bookings');
+  const [isClearHistoryModalOpen, setIsClearHistoryModalOpen] = useState(false);
   const isFirstLoad = React.useRef(true);
 
   useEffect(() => {
@@ -166,11 +168,11 @@ const AdminDashboard = () => {
   };
 
   const handleClearHistory = async () => {
-    if (!window.confirm('Are you sure you want to clear ALL completed/cancelled bookings from history?')) return;
     try {
       const historyBookings = bookings.filter(b => ['completed', 'cancelled'].includes(b.status));
       const promises = historyBookings.map(b => bookingService.deleteBooking(b.id!));
       await Promise.all(promises);
+      setIsClearHistoryModalOpen(false);
     } catch (error) {
       console.error(error);
     }
@@ -437,20 +439,27 @@ const AdminDashboard = () => {
       </AnimatePresence>
 
       {/* Real-time Notifications Popups */}
-      <div className="fixed bottom-6 right-6 z-[100] flex flex-col-reverse gap-3 w-80 pointer-events-none">
+      <div className="fixed bottom-6 right-6 z-[100] flex flex-col-reverse gap-3 w-[22rem] pointer-events-none">
         <AnimatePresence mode="popLayout">
           {notifications.map((notif) => (
             <motion.div
+              layout
               key={notif.id}
-              initial={{ opacity: 0, x: 50, scale: 0.9 }}
+              initial={{ opacity: 0, x: 100, scale: 0.9 }}
               animate={{ opacity: 1, x: 0, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.9, x: 20 }}
-              className={`p-4 rounded-2xl border pointer-events-auto shadow-2xl backdrop-blur-md flex gap-4 ${
-                notif.type === 'new' ? 'bg-blue-500/10 border-blue-500/30' :
-                notif.type === 'cancel' ? 'bg-red-500/10 border-red-500/30' :
-                'bg-amber-500/10 border-amber-500/30'
+              exit={{ opacity: 0, x: 100, scale: 0.9, transition: { duration: 0.2 } }}
+              transition={{ type: "spring", stiffness: 400, damping: 30 }}
+              className={`relative p-4 rounded-2xl border pointer-events-auto backdrop-blur-xl flex gap-4 overflow-hidden group ${
+                notif.type === 'new' ? 'bg-blue-950/90 border-blue-900/50 shadow-[0_8px_30px_-5px_rgba(59,130,246,0.3)]' :
+                notif.type === 'cancel' ? 'bg-red-950/90 border-red-900/50 shadow-[0_8px_30px_-5px_rgba(239,68,68,0.3)]' :
+                'bg-amber-950/90 border-amber-900/50 shadow-[0_8px_30px_-5px_rgba(245,158,11,0.3)]'
               }`}
             >
+              <div className={`absolute top-0 left-0 w-1 h-full ${
+                notif.type === 'new' ? 'bg-blue-500' :
+                notif.type === 'cancel' ? 'bg-red-500' :
+                'bg-amber-500'
+              }`} />
               <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
                 notif.type === 'new' ? 'bg-blue-500/20 text-blue-400' :
                 notif.type === 'cancel' ? 'bg-red-500/20 text-red-500' :
@@ -458,16 +467,19 @@ const AdminDashboard = () => {
               }`}>
                 {notif.type === 'new' ? <BellRing size={20} /> : <Bell size={20} />}
               </div>
-              <div>
+              <div className="flex-1 pr-6">
                 <p className="text-[10px] font-black uppercase tracking-widest text-slate-100 mb-1">{notif.title}</p>
-                <p className="text-xs font-medium text-zinc-400 leading-relaxed">{notif.message}</p>
-                <p className="text-[8px] font-black text-zinc-600 uppercase tracking-widest mt-2">Just Now</p>
+                <p className="text-xs font-medium text-zinc-300 leading-relaxed">{notif.message}</p>
+                <p className="text-[8px] font-black text-zinc-500 uppercase tracking-widest mt-2 flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-current animate-pulse inline-block" />
+                  Just Now
+                </p>
               </div>
               <button 
                 onClick={() => setNotifications(prev => prev.filter(n => n.id !== notif.id))}
-                className="absolute top-2 right-2 text-zinc-600 hover:text-zinc-400 p-1"
+                className="absolute top-3 right-3 text-zinc-500 hover:text-white p-1.5 rounded-full hover:bg-zinc-800 transition-colors opacity-0 group-hover:opacity-100"
               >
-                <XCircle size={14} />
+                <X size={14} />
               </button>
             </motion.div>
           ))}
@@ -585,6 +597,48 @@ const AdminDashboard = () => {
         )}
       </AnimatePresence>
 
+      <AnimatePresence>
+        {isClearHistoryModalOpen && (
+          <div className="fixed inset-0 z-[120] flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setIsClearHistoryModalOpen(false)}
+              className="absolute inset-0 bg-zinc-950/80 backdrop-blur-sm"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="relative bg-zinc-900 border border-zinc-800 p-8 rounded-[2rem] max-w-sm w-full shadow-2xl flex flex-col items-center text-center"
+            >
+              <div className="w-16 h-16 rounded-full bg-red-500/10 text-red-500 flex items-center justify-center mb-6">
+                <Trash2 size={32} />
+              </div>
+              <h3 className="text-xl font-bold text-slate-100 mb-2">Clear History?</h3>
+              <p className="text-sm text-zinc-400 mb-8 leading-relaxed">
+                This action will permanently delete all completed and cancelled bookings. This process cannot be undone. Are you absolutely sure?
+              </p>
+              <div className="flex gap-3 w-full">
+                <button
+                  onClick={() => setIsClearHistoryModalOpen(false)}
+                  className="flex-1 py-3 rounded-xl border border-zinc-800 text-zinc-400 font-bold text-xs uppercase tracking-wider hover:bg-zinc-800 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleClearHistory}
+                  className="flex-1 py-3 rounded-xl bg-red-500 text-white font-bold text-xs uppercase tracking-wider hover:bg-red-600 transition-colors"
+                >
+                  Confirm Delete
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
       {activeView === 'bookings' ? (
         <>
       <div className="flex flex-col gap-4 mb-8">
@@ -652,7 +706,7 @@ const AdminDashboard = () => {
           </div>
           {(filter === 'completed' || filter === 'all') && bookings.some(b => ['completed', 'cancelled'].includes(b.status)) && (
             <button 
-              onClick={handleClearHistory}
+              onClick={() => setIsClearHistoryModalOpen(true)}
               className="flex items-center justify-center gap-2 px-6 py-4 rounded-[2rem] border border-red-500/20 bg-red-500/5 text-red-500 hover:bg-red-500/10 transition-all font-black text-[10px] uppercase tracking-widest shrink-0"
             >
               <Trash2 size={16} />
@@ -857,7 +911,7 @@ const AdminDashboard = () => {
                 </h5>
                 <div className="bg-zinc-950/50 rounded-2xl p-4 border border-zinc-800/50">
                   <div className="flex items-center justify-between mb-4">
-                    <p className="text-[11px] font-black text-slate-400 uppercase tracking-tight">Total Due: ₹{booking.price}</p>
+                    <p className="text-[11px] font-black text-slate-400 uppercase tracking-tight">Total Due: {booking.price === 0 ? 'Free' : `₹${booking.price}`}</p>
                     <div className={`px-2 py-1 rounded-md text-[8px] font-black uppercase tracking-widest ${
                       booking.paymentStatus === 'paid' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-red-500/20 text-red-500'
                     }`}>
