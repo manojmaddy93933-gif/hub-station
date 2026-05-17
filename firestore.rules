@@ -1,0 +1,94 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // 0. Global Safety Net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // --- Helpers ---
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+    
+    function isAdmin() {
+      return isSignedIn() && 
+        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    // --- User Rules ---
+    match /users/{userId} {
+      function isValidUser(data) {
+        return data.uid is string && 
+               data.email is string && 
+               data.role in ['customer', 'admin'] &&
+               data.keys().hasAll(['uid', 'email', 'role']) &&
+               data.keys().size() >= 3;
+      }
+
+      allow read: if isSignedIn() && (isOwner(userId) || isAdmin());
+      allow create: if isSignedIn() && isOwner(userId) && isValidUser(incoming());
+      allow update: if (isOwner(userId) || isAdmin()) && (
+        // Allow updating mobileNumber or profile details
+        incoming().diff(existing()).affectedKeys().hasOnly(['mobileNumber', 'displayName', 'photoURL'])
+      );
+    }
+
+    // --- Booking Rules ---
+    match /bookings/{bookingId} {
+      function isValidBooking(data) {
+        return data.userId == request.auth.uid &&
+               data.type in ['game', 'carWash', 'badminton'] &&
+               data.status in ['pending', 'ongoing', 'completed', 'cancelled'] &&
+               data.price is number &&
+               data.date is string &&
+               data.startTime is string;
+      }
+
+      allow list: if isSignedIn() && (isAdmin() || resource.data.userId == request.auth.uid);
+      allow get: if isSignedIn() && (isAdmin() || resource.data.userId == request.auth.uid);
+      
+      allow create: if isSignedIn() && isValidBooking(incoming());
+      
+      allow update: if isAdmin() || (
+        isOwner(existing().userId) && 
+        incoming().status == 'cancelled' && 
+        existing().status == 'pending' &&
+        incoming().diff(existing()).affectedKeys().hasOnly(['status'])
+      );
+
+      // Admin specific action updates
+      allow update: if isAdmin() && (
+        // Action: Update status
+        incoming().diff(existing()).affectedKeys().hasOnly(['status', 'tracking']) &&
+        incoming().status in ['ongoing', 'completed', 'cancelled']
+      );
+
+      // Allow deletion of own bookings (History Clear) or by Admin
+      allow delete: if isSignedIn() && (isAdmin() || resource.data.userId == request.auth.uid);
+    }
+
+    // --- Menu Rules ---
+    match /menu/{menuId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+  }
+}

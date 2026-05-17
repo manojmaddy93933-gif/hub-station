@@ -1,0 +1,79 @@
+{
+  "entities": {
+    "User": {
+      "title": "User Profile",
+      "description": "Stores user profile information and role.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "email": { "type": "string", "format": "email" },
+        "displayName": { "type": "string" },
+        "mobileNumber": { "type": "string" },
+        "role": { "type": "string", "enum": ["customer", "admin"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "email", "role"]
+    },
+    "Booking": {
+      "title": "Service Booking",
+      "description": "Record of a service booking (game, car wash, or badminton).",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "type": { "type": "string", "enum": ["game", "carWash", "badminton"] },
+        "resourceId": { "type": "string" },
+        "resourceName": { "type": "string" },
+        "date": { "type": "string", "format": "date" },
+        "startTime": { "type": "string" },
+        "endTime": { "type": "string" },
+        "duration": { "type": "number" },
+        "vehicleNumber": { "type": "string" },
+        "vehicleMake": { "type": "string" },
+        "vehicleModel": { "type": "string" },
+        "vehicleYear": { "type": "string" },
+        "vehiclePhotoUrl": { "type": "string" },
+        "notes": { "type": "string" },
+        "status": { "type": "string", "enum": ["pending", "ongoing", "completed", "cancelled"] },
+        "price": { "type": "number" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "tracking": {
+          "type": "object",
+          "properties": {
+            "latitude": { "type": "number" },
+            "longitude": { "type": "number" },
+            "lastUpdated": { "type": "string", "format": "date-time" },
+            "statusUpdate": { "type": "string" }
+          }
+        }
+      },
+      "required": ["userId", "type", "date", "status", "price"]
+    },
+    "MenuItem": {
+      "title": "Cafe Menu Item",
+      "description": "Individual food or drink item in the cafe menu.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "category": { "type": "string" },
+        "price": { "type": "number" },
+        "imageUrl": { "type": "string" },
+        "available": { "type": "boolean" }
+      },
+      "required": ["name", "category", "price"]
+    }
+  },
+  "firestore": {
+    "users/{userId}": {
+      "schema": "User",
+      "description": "User profiles and metadata."
+    },
+    "bookings/{bookingId}": {
+      "schema": "Booking",
+      "description": "All service bookings across the hub."
+    },
+    "menu/{menuId}": {
+      "schema": "MenuItem",
+      "description": "Cafe menu catalog."
+    }
+  }
+}
