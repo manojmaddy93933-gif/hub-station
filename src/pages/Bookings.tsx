@@ -48,6 +48,7 @@ const Bookings = () => {
   const [rescheduleDate, setRescheduleDate] = useState('');
   const [rescheduleTime, setRescheduleTime] = useState('');
   const [isRescheduling, setIsRescheduling] = useState(false);
+  const [deleteDialogId, setDeleteDialogId] = useState<string | null>(null);
 
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [editDisplayName, setEditDisplayName] = useState(profile?.displayName || user?.displayName || '');
@@ -857,12 +858,16 @@ const Bookings = () => {
                         {booking.price === 0 ? 'Free' : `₹${booking.price}`}
                       </span>
                       {historyTab === 'history' && (
-                        <button 
-                          onClick={() => setDeleteDialogId(booking.id!)}
-                          className="p-2 text-zinc-600 hover:text-red-500 hover:bg-red-500/10 rounded-full transition-all"
-                        >
-                          <Trash2 size={16} />
-                        </button>
+                        <div className="flex items-center justify-center p-1 bg-red-500/5 border border-red-500/10 rounded-xl hover:border-red-500/30 hover:bg-red-500/10 transition-all duration-300">
+                          <button 
+                            onClick={() => setDeleteDialogId(booking.id!)}
+                            className="p-2 text-red-500 hover:text-red-400 hover:scale-105 transition-all focus:outline-none focus:ring-2 focus:ring-red-500/40 rounded-lg"
+                            title="Delete booking from history"
+                            aria-label="Delete booking from history"
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        </div>
                       )}
                     </div>
                   </div>

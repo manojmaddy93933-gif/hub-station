@@ -390,8 +390,9 @@ const AdminDashboard = () => {
     
     return Object.entries(capacities).map(([type, capacity]) => {
       const activeCount = activeBookings.filter(b => b.type === type).length;
-      const utilization = Math.min(Math.round((activeCount / capacity) * 100), 100);
-      return { type, capacity, activeCount, utilization };
+      const capVal = Number(capacity) || 1;
+      const utilization = Math.min(Math.round((activeCount / capVal) * 100), 100);
+      return { type, capacity: capVal, activeCount, utilization };
     });
   };
 
@@ -930,13 +931,16 @@ const AdminDashboard = () => {
                   >
                     <IndianRupee size={20} />
                   </button>
-                  <button 
-                    onClick={() => handleDeleteBooking(booking.id!)}
-                    className="p-3 bg-red-900/10 text-red-900 rounded-xl hover:bg-red-600 hover:text-white transition-all border border-red-900/20"
-                    title="Delete Record Permanently"
-                  >
-                    <Trash2 size={20} />
-                  </button>
+                  <div className="flex items-center justify-center p-0.5 bg-red-500/5 border border-red-500/10 rounded-xl hover:border-red-500/30 hover:bg-red-500/10 transition-all duration-300">
+                    <button 
+                      onClick={() => handleDeleteBooking(booking.id!)}
+                      className="p-2.5 text-red-500 hover:text-red-400 hover:scale-105 transition-all focus:outline-none focus:ring-2 focus:ring-red-500/40 rounded-lg"
+                      title="Delete Record Permanently"
+                      aria-label="Delete Record Permanently"
+                    >
+                      <Trash2 size={20} />
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>

@@ -26,7 +26,7 @@ async function startServer() {
     }
 
     try {
-      const { data, error } = await resend.emails.send({
+      let { data, error } = await resend.emails.send({
         from: 'Hub Experience <notifications@hubcafe.com>', // Note: Use a verified domain in production
         to: [to],
         subject: subject,
@@ -34,14 +34,37 @@ async function startServer() {
       });
 
       if (error) {
-        console.error("Resend Error:", error);
-        return res.status(400).json({ error });
+        console.warn("Primary email send failed. Attempting fallback with onboarding@resend.dev...", error);
+        
+        // Retry with onboarding@resend.dev which is allowed for unverified domains in Resend
+        const fallbackResult = await resend.emails.send({
+          from: 'Hub Experience <onboarding@resend.dev>',
+          to: [to],
+          subject: subject,
+          html: html,
+        });
+
+        if (fallbackResult.error) {
+          console.error("Resend Fallback Error:", fallbackResult.error);
+          // Return 200 with success: false so the client application flow doesn't crash on unverified email addresses
+          return res.status(200).json({
+            success: false,
+            message: "Email sending failed on both custom domain and onboarding fallback. If you are in Resend Sandbox, make sure the recipient is your registered Resend email address.",
+            error: fallbackResult.error
+          });
+        }
+
+        data = fallbackResult.data;
+        error = null;
       }
 
-      res.status(200).json({ data });
-    } catch (err) {
+      res.status(200).json({ success: true, data });
+    } catch (err: any) {
       console.error("Failed to send email:", err);
-      res.status(500).json({ error: "Internal server error" });
+      res.status(200).json({ 
+        success: false, 
+        message: err?.message || "Internal server error during email dispatch" 
+      });
     }
   });
 
