@@ -26,8 +26,7 @@ export const RATES = {
   },
   THEATRE: {
     rate1h: 500,
-    rate2h: 900,
-    halfDay: 1800
+    rate2h: 900
   },
   CAFE: {
     tableBooking: 0

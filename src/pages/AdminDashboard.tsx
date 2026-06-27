@@ -32,7 +32,10 @@ import {
   Trophy,
   Monitor,
   Coffee,
-  X
+  X,
+  Video,
+  Plus,
+  Edit
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import PaymentQR from '../components/PaymentQR';

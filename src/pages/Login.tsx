@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { signInWithGoogle } from '../services/firebase';
 import { LogIn, ArrowRight } from 'lucide-react';
 import { Navigate } from 'react-router-dom';
+import logoImg from '../assets/images/hub_station_logo_1782546161387.jpg';
 
 const Login = () => {
   const { user } = useAuth();
@@ -18,6 +19,15 @@ const Login = () => {
         className="max-w-md w-full bg-zinc-900 rounded-[3rem] p-12 shadow-2xl text-center border border-zinc-800 relative overflow-hidden"
       >
         <div className="absolute top-0 left-0 w-full h-1 bg-accent opacity-50" />
+        
+        <div className="flex justify-center mb-6">
+          <img 
+            src={logoImg} 
+            alt="Hub Station Logo" 
+            className="w-20 h-20 rounded-2xl object-cover border border-zinc-800 shadow-2xl"
+            referrerPolicy="no-referrer"
+          />
+        </div>
         
         <h2 className="text-3xl font-black mb-4 uppercase tracking-tighter text-slate-100 italic">Welcome</h2>
         <p className="text-zinc-500 mb-12 leading-relaxed font-medium">

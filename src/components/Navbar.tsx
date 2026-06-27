@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { signInWithGoogle, logout } from '../services/firebase';
 import { Car, Gamepad2, Settings, User as UserIcon, LogOut } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import logoImg from '../assets/images/hub_station_logo_1782546161387.jpg';
 
 const Navbar = () => {
   const { user, profile, isAdmin } = useAuth();
@@ -19,16 +20,22 @@ const Navbar = () => {
     >
       <div className="max-w-7xl mx-auto px-4 h-20 flex items-center justify-between">
         <Link to="/" className="flex items-center gap-3 group">
+          <img 
+            src={logoImg} 
+            alt="Hub Station Logo" 
+            className="w-10 h-10 rounded-xl object-cover border border-zinc-800 group-hover:border-accent/40 transition-all duration-300 shadow-lg shadow-black/40 group-hover:scale-105"
+            referrerPolicy="no-referrer"
+          />
           <div className="flex flex-col">
-            <h1 className="font-black text-lg leading-none tracking-tight text-slate-100 uppercase italic">Hub Station</h1>
+            <h1 className="font-black text-lg leading-none tracking-tight text-slate-100 uppercase italic group-hover:text-accent transition-colors">Hub Station</h1>
             <p className="text-[8px] uppercase tracking-[0.3em] text-zinc-500 font-black mt-1">Premium Experience</p>
           </div>
         </Link>
 
         <div className="hidden md:flex items-center gap-8">
-          <Link to="/bookings" className="font-bold text-xs uppercase tracking-widest hover:text-accent transition-colors">Games</Link>
-          <Link to="/bookings" className="font-bold text-xs uppercase tracking-widest hover:text-accent transition-colors">Car Wash</Link>
-          <Link to="/bookings" className="font-bold text-xs uppercase tracking-widest hover:text-accent transition-colors">Badminton</Link>
+          <Link to="/bookings?type=game" className="font-bold text-xs uppercase tracking-widest hover:text-accent transition-colors">Games</Link>
+          <Link to="/bookings?type=carWash" className="font-bold text-xs uppercase tracking-widest hover:text-accent transition-colors">Car Wash</Link>
+          <Link to="/bookings?type=badminton" className="font-bold text-xs uppercase tracking-widest hover:text-accent transition-colors">Badminton</Link>
         </div>
 
         <div className="flex items-center gap-4">

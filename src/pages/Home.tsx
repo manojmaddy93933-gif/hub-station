@@ -8,6 +8,7 @@ import badmintonImg from '../assets/images/badminton_vibe_1778742647583.png';
 import { Monitor } from 'lucide-react';
 
 const Home = () => {
+
   const containerVariants = {
     hidden: { opacity: 0 },
     visible: {
@@ -53,7 +54,7 @@ const Home = () => {
       description: 'Gourmet menu, artisan coffee, and premium social vibes with free table booking.',
       icon: <Coffee size={24} />,
       image: 'https://images.unsplash.com/photo-1554118811-1e0d58224f24?q=80&w=2047&auto=format&fit=crop',
-      link: '/bookings',
+      link: '/bookings?type=cafe',
       color: 'text-amber-500',
       bg: 'bg-amber-500/10',
       timing: '9:00 AM - 10:00 PM'
@@ -64,7 +65,7 @@ const Home = () => {
       description: 'Private luxury hall for birthdays and celebrations.',
       icon: <Monitor size={24} />,
       image: 'https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?q=80&w=2070&auto=format&fit=crop',
-      link: '/bookings',
+      link: '/bookings?type=theatre',
       color: 'text-rose-500',
       bg: 'bg-rose-500/10',
       timing: '10:00 AM - 10:00 PM'
@@ -75,7 +76,7 @@ const Home = () => {
       description: 'Carrom, Chess, Ludo, and Free tables. Book your table now.',
       icon: <Gamepad2 size={24} />,
       image: gamesImg,
-      link: '/bookings',
+      link: '/bookings?type=game',
       color: 'text-blue-500',
       bg: 'bg-blue-500/10',
       timing: '8:30 AM - 11:00 PM'
@@ -86,7 +87,7 @@ const Home = () => {
       description: 'Professional 2-bay service hub with real-time status.',
       icon: <Car size={24} />,
       image: carWashImg,
-      link: '/bookings',
+      link: '/bookings?type=carWash',
       color: 'text-green-500',
       bg: 'bg-green-500/10',
       timing: '10:00 AM - 7:00 PM'
@@ -97,7 +98,7 @@ const Home = () => {
       description: 'Professional court with flexible booking slots.',
       icon: <Trophy size={24} />,
       image: badmintonImg,
-      link: '/bookings',
+      link: '/bookings?type=badminton',
       color: 'text-indigo-500',
       bg: 'bg-indigo-500/10',
       timing: '7AM-11AM & 4PM-11PM'
@@ -306,6 +307,7 @@ const Home = () => {
           </div>
         </motion.div>
       </section>
+
     </div>
   );
 };

@@ -31,11 +31,13 @@ import {
 import { QRCodeSVG } from 'qrcode.react';
 import { doc, updateDoc } from 'firebase/firestore';
 import { db } from '../services/firebase';
+import { useSearchParams } from 'react-router-dom';
 import { RATES, CAR_WASH_HOURS, BADMINTON_HOURS, THEATRE_HOURS, AURA_CAFE_HOURS } from '../constants';
 import PaymentQR from '../components/PaymentQR';
 
 const Bookings = () => {
   const { user, profile } = useAuth();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [myBookings, setMyBookings] = useState<Booking[]>([]);
   const [activeTab, setActiveTab] = useState<BookingType>('game');
   const [historyTab, setHistoryTab] = useState<'active' | 'history'>('active');
@@ -54,6 +56,17 @@ const Bookings = () => {
   const [editDisplayName, setEditDisplayName] = useState(profile?.displayName || user?.displayName || '');
   const [editMobileNumber, setEditMobileNumber] = useState(profile?.mobileNumber || '');
   const [isUpdatingProfile, setIsUpdatingProfile] = useState(false);
+
+  useEffect(() => {
+    const typeParam = searchParams.get('type') as BookingType;
+    if (typeParam && ['game', 'carWash', 'badminton', 'theatre', 'cafe'].includes(typeParam)) {
+      setActiveTab(typeParam);
+      // Clean up search parameters so they don't stick around if user manually switches tabs
+      const newParams = new URLSearchParams(searchParams);
+      newParams.delete('type');
+      setSearchParams(newParams, { replace: true });
+    }
+  }, [searchParams, setSearchParams]);
 
   useEffect(() => {
     if (profile) {
@@ -132,7 +145,6 @@ const Bookings = () => {
       } else if (activeTab === 'theatre') {
         if (resourceId === '1 Hour') price = RATES.THEATRE.rate1h;
         else if (resourceId === '2 Hours') price = RATES.THEATRE.rate2h;
-        else if (resourceId === 'Half Day (4h)') price = RATES.THEATRE.halfDay;
         resourceName = `Birthday Theatre (${resourceId})`;
       } else if (activeTab === 'cafe') {
         price = RATES.CAFE.tableBooking;
@@ -155,7 +167,7 @@ const Bookings = () => {
         startTime,
         endTime: '', // Calculated on backend or simple offset
         duration: activeTab === 'badminton' ? (resourceId === '2 Hours' ? 2 : 1) : 
-                  activeTab === 'theatre' ? (resourceId === 'Half Day (4h)' ? 4 : (resourceId === '2 Hours' ? 2 : 1)) : 
+                  activeTab === 'theatre' ? (resourceId === '2 Hours' ? 2 : 1) : 
                   activeTab === 'cafe' ? 1 : 1,
         status: 'pending',
         price,
@@ -444,7 +456,6 @@ const Bookings = () => {
                   <>
                     <option value="1 Hour">1 Hour (₹{RATES.THEATRE.rate1h})</option>
                     <option value="2 Hours">2 Hours (₹{RATES.THEATRE.rate2h})</option>
-                    <option value="Half Day (4h)">Half Day (4h) (₹{RATES.THEATRE.halfDay})</option>
                   </>
                 )}
                 {activeTab === 'cafe' && (
@@ -698,7 +709,6 @@ const Bookings = () => {
                 <span className="text-[10px] font-black uppercase tracking-widest">Cancellation Policy</span>
               </div>
               <ul className="text-[9px] text-zinc-500 space-y-1 mb-4 font-medium uppercase tracking-wider list-disc pl-3">
-                <li>Full refund for cancellations made at least 2 hours before the scheduled time.</li>
                 <li>Cancellations within 2 hours or no-shows are non-refundable.</li>
                 <li>Rescheduling is subject to availability and hub discretion.</li>
               </ul>
@@ -781,7 +791,7 @@ const Bookings = () => {
         </div>
       </div>
 
-      <div className="grid grid-cols-3 gap-4 mb-8">
+      <div className="grid grid-cols-2 gap-4 mb-8">
         <div className="bg-zinc-900 border border-zinc-800 rounded-3xl p-4 shadow-sm flex flex-col items-center justify-center">
           <span className="text-[10px] font-black text-zinc-500 uppercase tracking-widest mb-1">Upcoming</span>
           <span className="text-2xl font-black text-slate-100 italic">{upcomingCount}</span>
@@ -789,10 +799,6 @@ const Bookings = () => {
         <div className="bg-zinc-900 border border-zinc-800 rounded-3xl p-4 shadow-sm flex flex-col items-center justify-center">
           <span className="text-[10px] font-black text-zinc-500 uppercase tracking-widest mb-1">Past</span>
           <span className="text-2xl font-black text-slate-100 italic">{pastCount}</span>
-        </div>
-        <div className="bg-zinc-900 border border-zinc-800 rounded-3xl p-4 shadow-sm flex flex-col items-center justify-center">
-          <span className="text-[10px] font-black text-zinc-500 uppercase tracking-widest mb-1">Total Spent</span>
-          <span className="text-2xl font-black text-emerald-400 italic">₹{totalSpent}</span>
         </div>
       </div>
         
