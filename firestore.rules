@@ -55,7 +55,7 @@ service cloud.firestore {
     match /bookings/{bookingId} {
       function isValidBooking(data) {
         return data.userId == request.auth.uid &&
-               data.type in ['game', 'carWash', 'badminton'] &&
+               data.type in ['game', 'carWash', 'badminton', 'theatre', 'cafe'] &&
                data.status in ['pending', 'ongoing', 'completed', 'cancelled'] &&
                data.price is number &&
                data.date is string &&

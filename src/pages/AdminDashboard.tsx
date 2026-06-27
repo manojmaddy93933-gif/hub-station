@@ -95,7 +95,10 @@ const getServiceDisplayName = (type: string) => {
   return types[type] || type;
 };
 
+const MotionBell = motion(Bell);
+
 const AdminDashboard = () => {
+  const [bellAnimate, setBellAnimate] = useState(false);
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [filter, setFilter] = useState<BookingStatus | 'all'>('all');
   const [searchTerm, setSearchTerm] = useState('');
@@ -577,12 +580,22 @@ const AdminDashboard = () => {
             onClick={() => {
               setShowNotifications(!showNotifications);
               setUnreadCount(0);
+              setBellAnimate(true);
+              setTimeout(() => setBellAnimate(false), 500);
             }}
             className={`relative flex items-center justify-center w-14 h-14 rounded-[2rem] border transition-all shadow-2xl ${
               showNotifications ? 'bg-accent border-accent text-zinc-950' : 'bg-zinc-900 border-zinc-800 text-slate-100 font-black hover:border-accent/40'
             }`}
           >
-            <Bell size={20} />
+            <MotionBell 
+              size={20} 
+              animate={bellAnimate ? {
+                scale: [1, 1.3, 0.85, 1.15, 0.95, 1],
+                rotate: [0, -15, 15, -10, 10, 0]
+              } : { scale: 1, rotate: 0 }}
+              transition={{ duration: 0.5, ease: "easeInOut" }}
+              whileTap={{ scale: 0.85 }}
+            />
             {unreadCount > 0 && (
               <span className="absolute -top-1 -right-1 w-6 h-6 bg-red-500 rounded-full flex items-center justify-center text-[10px] font-black text-white border-2 border-zinc-900 shadow-lg">
                 {unreadCount > 9 ? '9+' : unreadCount}

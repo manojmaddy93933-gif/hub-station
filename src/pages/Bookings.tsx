@@ -883,7 +883,7 @@ const Bookings = () => {
 
                 {/* QR Code Actions */}
                 {!['completed', 'cancelled'].includes(booking.status) && (
-                  <div className="mt-4 grid grid-cols-2 gap-3">
+                  <div className={`mt-4 grid ${booking.price > 0 ? 'grid-cols-3' : 'grid-cols-2'} gap-3`}>
                     <button 
                       onClick={() => {
                         setReschedulingBooking(booking);
@@ -897,6 +897,20 @@ const Bookings = () => {
                         Reschedule
                       </span>
                     </button>
+                    {booking.price > 0 && (
+                      <button 
+                        onClick={() => {
+                          setShowPaymentQR(showPaymentQR === booking.id ? null : booking.id!);
+                          setShowQR(null);
+                        }}
+                        className="flex-1 py-4 bg-zinc-950 border border-zinc-800 rounded-2xl flex items-center justify-center gap-3 hover:border-emerald-500/40 transition-all group/payment"
+                      >
+                        <IndianRupee size={18} className="text-zinc-600 group-hover/payment:text-emerald-500 transition-colors" />
+                        <span className="text-[10px] font-black text-zinc-500 uppercase tracking-widest group-hover/payment:text-slate-100">
+                          {showPaymentQR === booking.id ? 'Hide Pay' : 'Pay Now'}
+                        </span>
+                      </button>
+                    )}
                     <button 
                       onClick={() => {
                         setShowQR(showQR === booking.id ? null : booking.id!);
@@ -934,6 +948,19 @@ const Bookings = () => {
                             Booking ID: {booking.id?.slice(-8).toUpperCase()}
                           </div>
                       </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+
+                <AnimatePresence>
+                  {showPaymentQR === booking.id && (
+                    <motion.div 
+                      initial={{ opacity: 0, scale: 0.95, height: 0 }}
+                      animate={{ opacity: 1, scale: 1, height: 'auto' }}
+                      exit={{ opacity: 0, scale: 0.95, height: 0 }}
+                      className="overflow-hidden mt-4"
+                    >
+                      <PaymentQR amount={booking.price} bookingId={booking.id} />
                     </motion.div>
                   )}
                 </AnimatePresence>
