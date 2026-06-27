@@ -748,6 +748,7 @@ const Bookings = () => {
                 onClick={handleClearHistory}
                 disabled={isClearing}
                 className="flex items-center gap-2 text-red-500 hover:text-red-400 transition-colors py-2 px-3 rounded-xl hover:bg-red-500/10 font-black text-[9px] uppercase tracking-widest disabled:opacity-50"
+                aria-label="Clear all bookings from history"
               >
                 {isClearing ? 'Clearing...' : (
                   <>
@@ -858,16 +859,17 @@ const Bookings = () => {
                         {booking.price === 0 ? 'Free' : `₹${booking.price}`}
                       </span>
                       {historyTab === 'history' && (
-                        <div className="flex items-center justify-center p-1 bg-red-500/5 border border-red-500/10 rounded-xl hover:border-red-500/30 hover:bg-red-500/10 transition-all duration-300">
-                          <button 
-                            onClick={() => setDeleteDialogId(booking.id!)}
-                            className="p-2 text-red-500 hover:text-red-400 hover:scale-105 transition-all focus:outline-none focus:ring-2 focus:ring-red-500/40 rounded-lg"
-                            title="Delete booking from history"
-                            aria-label="Delete booking from history"
-                          >
-                            <Trash2 size={16} />
-                          </button>
-                        </div>
+                        <button 
+                          onClick={() => setDeleteDialogId(booking.id!)}
+                          className="px-3.5 py-2 bg-red-500/5 border border-red-500/10 hover:border-red-500/30 text-red-500 hover:text-red-400 hover:bg-red-500/10 rounded-xl flex items-center gap-2 transition-all duration-300 active:scale-95 group/delete"
+                          title="Delete booking from history"
+                          aria-label="Delete booking from history"
+                        >
+                          <Trash2 size={14} className="text-red-500/70 group-hover/delete:text-red-500 transition-colors" />
+                          <span className="text-[9px] font-black text-red-500/70 uppercase tracking-widest group-hover/delete:text-red-400">
+                            Delete
+                          </span>
+                        </button>
                       )}
                     </div>
                   </div>
@@ -875,7 +877,7 @@ const Bookings = () => {
 
                 {/* QR Code Actions */}
                 {!['completed', 'cancelled'].includes(booking.status) && (
-                  <div className="mt-4 grid grid-cols-3 gap-3">
+                  <div className="mt-4 grid grid-cols-2 gap-3">
                     <button 
                       onClick={() => {
                         setReschedulingBooking(booking);
@@ -899,19 +901,6 @@ const Bookings = () => {
                       <QrCode size={18} className="text-zinc-600 group-hover/qr:text-accent transition-colors" />
                       <span className="text-[10px] font-black text-zinc-500 uppercase tracking-widest group-hover/qr:text-slate-100">
                         {showQR === booking.id ? 'Hide ID' : 'Check-in QR'}
-                      </span>
-                    </button>
-
-                    <button 
-                      onClick={() => {
-                        setShowPaymentQR(showPaymentQR === booking.id ? null : booking.id!);
-                        setShowQR(null);
-                      }}
-                      className="flex-1 py-4 bg-zinc-950 border border-zinc-800 rounded-2xl flex items-center justify-center gap-3 hover:border-green-500/40 transition-all group/pay"
-                    >
-                      <IndianRupee size={18} className="text-zinc-600 group-hover/pay:text-green-500 transition-colors" />
-                      <span className="text-[10px] font-black text-zinc-500 uppercase tracking-widest group-hover/pay:text-slate-100">
-                        {showPaymentQR === booking.id ? 'Hide Pay' : 'Scan & Pay'}
                       </span>
                     </button>
                   </div>
@@ -938,19 +927,6 @@ const Bookings = () => {
                           <div className="mt-2 text-[8px] font-bold text-zinc-400 uppercase tracking-widest leading-none">
                             Booking ID: {booking.id?.slice(-8).toUpperCase()}
                           </div>
-                      </div>
-                    </motion.div>
-                  )}
-                  
-                  {showPaymentQR === booking.id && (
-                    <motion.div 
-                      initial={{ opacity: 0, scale: 0.95, height: 0 }}
-                      animate={{ opacity: 1, scale: 1, height: 'auto' }}
-                      exit={{ opacity: 0, scale: 0.95, height: 0 }}
-                      className="overflow-hidden"
-                    >
-                      <div className="mt-4">
-                        <PaymentQR amount={booking.price} bookingId={booking.id!} />
                       </div>
                     </motion.div>
                   )}
@@ -1215,12 +1191,14 @@ const Bookings = () => {
                 <button
                   onClick={() => setDeleteDialogId(null)}
                   className="flex-1 py-3 bg-zinc-800 hover:bg-zinc-700 text-slate-200 rounded-xl font-bold uppercase text-[10px] tracking-widest transition-colors"
+                  aria-label="Cancel deletion"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={confirmDelete}
                   className="flex-1 py-3 bg-red-500 hover:bg-red-600 text-white rounded-xl font-bold uppercase text-[10px] tracking-widest transition-colors"
+                  aria-label="Delete booking permanently"
                 >
                   Delete
                 </button>

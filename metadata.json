@@ -1,1 +1,10 @@
 {
+  "name": "Hub Station",
+  "description": "Premium experience booking hub for Cafe, Detailing, and Gaming",
+  "requestFramePermissions": [
+    "camera"
+  ],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

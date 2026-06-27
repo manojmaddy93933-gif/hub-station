@@ -36,6 +36,8 @@ import {
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import PaymentQR from '../components/PaymentQR';
+import QRScanner from '../components/QRScanner';
+import { Camera } from 'lucide-react';
 
 interface Notification {
   id: string;
@@ -98,6 +100,7 @@ const AdminDashboard = () => {
   const [assignBayBookingId, setAssignBayBookingId] = useState<string | null>(null);
   const [trackingNote, setTrackingNote] = useState('');
   const [showAdminPaymentQR, setShowAdminPaymentQR] = useState<{ amount?: number; bookingId?: string } | boolean>(false);
+  const [showQRScanner, setShowQRScanner] = useState(false);
   const [successAnimationId, setSuccessAnimationId] = useState<string | null>(null);
   
   // Security State
@@ -593,9 +596,27 @@ const AdminDashboard = () => {
           </Link>
 
           <button 
-            onClick={() => setShowAdminPaymentQR(!showAdminPaymentQR)}
+            onClick={() => {
+              setShowQRScanner(!showQRScanner);
+              setShowAdminPaymentQR(false);
+            }}
             className={`flex items-center gap-3 px-6 py-4 rounded-[2rem] border transition-all shadow-2xl ${
-              showAdminPaymentQR ? 'bg-green-500 border-green-400 text-white' : 'bg-zinc-900 border-zinc-800 text-slate-100 font-black'
+              showQRScanner ? 'bg-accent border-accent text-zinc-950 font-black' : 'bg-zinc-900 border-zinc-800 text-slate-100 font-black hover:border-accent/40'
+            }`}
+          >
+            <Camera size={20} />
+            <span className="text-[10px] uppercase tracking-widest font-black">
+              {showQRScanner ? 'Close Scanner' : 'Camera Scanner'}
+            </span>
+          </button>
+
+          <button 
+            onClick={() => {
+              setShowAdminPaymentQR(!showAdminPaymentQR);
+              setShowQRScanner(false);
+            }}
+            className={`flex items-center gap-3 px-6 py-4 rounded-[2rem] border transition-all shadow-2xl ${
+              showAdminPaymentQR ? 'bg-green-500 border-green-400 text-white' : 'bg-zinc-900 border-zinc-800 text-slate-100 font-black hover:border-accent/40'
             }`}
           >
             <IndianRupee size={20} />
@@ -675,6 +696,22 @@ const AdminDashboard = () => {
             </div>
           </motion.div>
         )}
+
+        {showQRScanner && (
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.95, y: -20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.95, y: -20 }}
+            className="mb-12 flex justify-center"
+          >
+            <QRScanner 
+              onClose={() => setShowQRScanner(false)} 
+              onStatusUpdated={() => {
+                // Realtime subscription handles updates, we just provide an empty callback
+              }}
+            />
+          </motion.div>
+        )}
       </AnimatePresence>
 
       <AnimatePresence>
@@ -704,12 +741,14 @@ const AdminDashboard = () => {
                 <button
                   onClick={() => setIsClearHistoryModalOpen(false)}
                   className="flex-1 py-3 rounded-xl border border-zinc-800 text-zinc-400 font-bold text-xs uppercase tracking-wider hover:bg-zinc-800 transition-colors"
+                  aria-label="Cancel clear history"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={handleClearHistory}
                   className="flex-1 py-3 rounded-xl bg-red-500 text-white font-bold text-xs uppercase tracking-wider hover:bg-red-600 transition-colors"
+                  aria-label="Confirm clear all history"
                 >
                   Confirm Delete
                 </button>
@@ -788,6 +827,7 @@ const AdminDashboard = () => {
             <button 
               onClick={() => setIsClearHistoryModalOpen(true)}
               className="flex items-center justify-center gap-2 px-6 py-4 rounded-[2rem] border border-red-500/20 bg-red-500/5 text-red-500 hover:bg-red-500/10 transition-all font-black text-[10px] uppercase tracking-widest shrink-0"
+              aria-label="Clear bookings history"
             >
               <Trash2 size={16} />
               Clear History
@@ -931,16 +971,14 @@ const AdminDashboard = () => {
                   >
                     <IndianRupee size={20} />
                   </button>
-                  <div className="flex items-center justify-center p-0.5 bg-red-500/5 border border-red-500/10 rounded-xl hover:border-red-500/30 hover:bg-red-500/10 transition-all duration-300">
-                    <button 
-                      onClick={() => handleDeleteBooking(booking.id!)}
-                      className="p-2.5 text-red-500 hover:text-red-400 hover:scale-105 transition-all focus:outline-none focus:ring-2 focus:ring-red-500/40 rounded-lg"
-                      title="Delete Record Permanently"
-                      aria-label="Delete Record Permanently"
-                    >
-                      <Trash2 size={20} />
-                    </button>
-                  </div>
+                  <button 
+                    onClick={() => handleDeleteBooking(booking.id!)}
+                    className="p-3 bg-red-500/5 border border-red-500/10 hover:border-red-500/30 text-red-500 hover:text-red-400 hover:bg-red-500/10 rounded-xl transition-all duration-300 active:scale-95 flex items-center justify-center"
+                    title="Delete Record Permanently"
+                    aria-label="Delete Record Permanently"
+                  >
+                    <Trash2 size={20} />
+                  </button>
                 </div>
               </div>
             </div>
